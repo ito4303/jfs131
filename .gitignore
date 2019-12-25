@@ -19,6 +19,8 @@
 
 # RStudio files
 .Rproj.user/
+*.Rproj
+jfs131_files/
 
 # produced vignettes
 vignettes/*.html
@@ -37,3 +39,8 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# TeX files
+*.log
+jfs131.tex
+

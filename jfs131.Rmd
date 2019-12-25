@@ -1,0 +1,79 @@
+---
+title: "植生被度階級データのモデリング"
+author: "伊東宏樹"
+date: "2020-03-27"
+institute: "森林総合研究所北海道支所"
+output:
+  beamer_presentation:
+    latex_engine: lualatex
+    theme: metropolis
+    keep_tex: true
+    includes:
+      in_header: header.tex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(extraDistr)
+library(ggplot2)
+library(ggthemes)
+library(rstan)
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+```
+
+# はじめに
+
+## 被度階級データ
+
+- 目視で測定されることが多い。
+
+
+## ベータ分布
+
+```{r cover_prob_func, include=FALSE}
+cover_prob <- function(cover, cut_points, a, b) {
+  n <- length(cut_points)
+  pr <- rep(0, n + 1)
+  pr[1] <- pbeta(cut_points[1], a, b)
+  for (k in 2:n)
+    pr[k] <- pbeta(cut_points[k], a, b) -
+             pbeta(cut_points[k - 1], a, b)
+  pr[n + 1] <- 1 - pbeta(cut_points[n], a, b)
+  return(pr)
+}
+```
+
+```{r plot_beta_distribution, echo=FALSE, warning=FALSE}
+p <- 0.6
+delta = c(0.001, 0.01, 0.1, 0.2, 0.4)
+a <- p / delta - p
+b <- (1 - p) * (1 - delta) / delta
+x <- rep(seq(0.001, 1 - 0.001, length = 300), length(delta))
+y <- matrix(0, ncol = length(delta), nrow = length(x))
+for (d in seq_along(delta))
+  y[, d] <- (sapply(seq_along(x), function(i) dbeta(x[i], a[d], b[d])))
+
+df <- data.frame(Cover = x,
+                 Density = c(y),
+                 delta = factor(rep(delta, each = length(x))))
+colors <- colorblind_pal()(8)[c(7, 6, 3, 2, 4)]
+ggplot(df, aes(x = Cover, y = Density, color = delta)) +
+  geom_line(size = 1, alpha = 0.9) +
+  scale_color_manual(values = colors) +
+#  annotate("text", x = 0, y = 24, hjust = 0,
+#           label = "mu=0.6", color = "black") +
+  annotate("text", x = 0.625, y = 20, hjust = 0, size = 3,
+           label = bquote(delta == .(delta[1])), color = colors[1]) +
+  annotate("text", x = 0.65, y = 6.5, hjust = 0, size = 3,
+           label = bquote(delta == .(delta[2])), color = colors[2]) +
+  annotate("text", x = 0.68, y = 3.2, hjust = 0, size = 3,
+           label = bquote(delta == .(delta[3])), color = colors[3]) +
+  annotate("text", x = 0.8, y = 2.35, hjust = 0, size = 3,
+           label = bquote(delta == .(delta[4])), color = colors[4]) +
+  annotate("text", x = 1, y = 10, hjust = 1, size = 3,
+           label = bquote(delta == .(delta[5])), color = colors[5]) +
+  theme_gray(base_family = "Helvetica", base_size = 18) +
+  theme(legend.position = "none",
+        plot.background = element_rect(fill = "transparent", color = NA))
+```
