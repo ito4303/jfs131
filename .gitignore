@@ -21,6 +21,7 @@
 .Rproj.user/
 *.Rproj
 jfs131_files/
+*.html
 
 # produced vignettes
 vignettes/*.html
@@ -40,7 +41,11 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# TeX files
-*.log
-jfs131.tex
+# Compiler files
+*.hpp
+*.o
+cover
+zicover
+zicover2
+
 
