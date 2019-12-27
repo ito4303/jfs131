@@ -1,6 +1,8 @@
 /*
  * Modeling of cover class data
  * using regularized incomplete beta function
+ *
+ * Model with covariate
  */
 
 functions {
@@ -36,21 +38,24 @@ functions {
 data {
   int<lower = 1> N_cls;                       // Number of classes
   int<lower = 1> N;                           // Number of observations
-  int<lower = 0, upper = N_cls> Y[N];         // Observed cover class
+  int<lower = 1> R;                           // Number of replications
+  int<lower = 0, upper = N_cls> Y[N, R];      // Observed cover class
   vector<lower = 0, upper = 1>[N_cls - 1] CP; // Cut points
   vector[N] X;                                // explanatory variable
 }
 
 parameters {
-  real<lower = 0, upper = 1> delta;           // intra-quad corr. or uncertainty
+  real<lower = 0, upper = 1> delta;           // intra-quad corr.
+                                              //  or uncertainty
   vector[2] beta;                             // intercept and coeff.
-  vector[N] err;
-  real<lower = 0> sigma;
+  vector[N] err;                              // error in system (reparam)
+  real<lower = 0> sigma;                      // sd of error
 }
 
 transformed parameters {
   vector<lower = 0, upper = 1>[N] p;          // proportion of cover
 
+  // System
   p = inv_logit(beta[1] + beta[2] * X + sigma * err);
 }
 
@@ -60,7 +65,8 @@ model {
     real a = p[n] / delta - p[n];
     real b = (1 - p[n]) * (1 - delta) / delta;
 
-    Y[n] ~ coverclass(CP, a, b);
+    for (r in 1:R)
+      Y[n, r] ~ coverclass(CP, a, b);
   }
   // System
   err ~ std_normal();
@@ -79,6 +85,7 @@ generated quantities {
                       + normal_rng(0, sigma));
     a = p_new / delta - p_new;
     b = (1 - p_new) * (1 - delta) / delta;
+    
     yrep[n] = coverclass_rng(CP, N_cls, a, b);
   }
 }

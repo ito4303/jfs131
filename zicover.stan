@@ -36,7 +36,8 @@ functions {
 data {
   int<lower = 1> N_cls;                       // Number of classes
   int<lower = 1> N;                           // Number of observations
-  int<lower = 0, upper = N_cls> Y[N];         // Observed cover class
+  int<lower = 1> R;                           // Number of replications
+  int<lower = 0, upper = N_cls> Y[N, R];      // Observed cover class
   vector<lower = 0, upper = 1>[N_cls - 1] CP; // Cut points
   vector[N] X;                                // explanatory variable
 }
@@ -46,12 +47,14 @@ parameters {
   real<lower = 0, upper = 1> omega; // prob. non-zero
   real<lower = 0, upper = 1> psi;   // detection prob.
   vector[2] beta;                   // intercept and coeff.
+  vector[N] err;                    // error in system (reparam)
+  real<lower = 0> sigma;            // sd of error
 }
 
 transformed parameters {
   vector<lower = 0, upper = 1>[N] p;               // proportion of cover
 
-  p = inv_logit(beta[1] + beta[2] * X);
+  p = inv_logit(beta[1] + beta[2] * X + sigma * err);
 }
 
 model {
@@ -60,35 +63,52 @@ model {
     real a = p[n] / delta - p[n];
     real b = (1 - p[n]) * (1 - delta) / delta;
 
-    if (Y[n] == 0) {
+    if (sum(Y[n]) == 0) { // Y[n]==0 for all n
       real lp[2];
       
       lp[1] = bernoulli_lpmf(0 | omega);
       lp[2] = bernoulli_lpmf(1 | omega)
-              + coverclass_lpmf(1 | CP, a, b)
-              + bernoulli_lpmf(0 | psi);
+              + coverclass_lpmf(1 | CP, a, b) * R
+              + bernoulli_lpmf(0 | psi) * R;
       target += log_sum_exp(lp);
-    } else if (Y[n] == 1) {
-      target += bernoulli_lpmf(1 | omega)
-                + coverclass_lpmf(1 | CP, a, b)
-                + bernoulli_lpmf(1 | psi);
     } else {
-      target += bernoulli_lpmf(1 | omega)
-                + coverclass_lpmf(Y[n] | CP, a, b);
+      for (r in 1:R) {
+        if (Y[n, r] == 0) {
+          target += bernoulli_lpmf(1 | omega)
+                    + coverclass_lpmf(1 | CP, a, b)
+                    + bernoulli_lpmf(0 | psi);
+        } else if (Y[n, r] == 1) {
+          target += bernoulli_lpmf(1 | omega)
+                    + coverclass_lpmf(1 | CP, a, b)
+                    + bernoulli_lpmf(1 | psi);
+        } else {
+          target += bernoulli_lpmf(1 | omega)
+                    + coverclass_lpmf(Y[n, r] | CP, a, b);
+        }
+      }
     }
   }
+  // System
+  err ~ std_normal();
+  sigma ~ normal(0, 5);
 }
 
 generated quantities {
   int yrep[N];
-  
-  for (n in 1:N) {
-    real a = p[n] / delta - p[n];
-    real b = (1 - p[n]) * (1 - delta) / delta;
 
+  for (n in 1:N) {
     if (bernoulli_rng(omega)) {
+      real p_new;
+      real a;
+      real b;
+
+      p_new = inv_logit(beta[1] + beta[2] * X[n]
+                        + normal_rng(0, sigma));
+      a = p_new / delta - p_new;
+      b = (1 - p_new) * (1 - delta) / delta;
+
       yrep[n] = coverclass_rng(CP, N_cls, a, b);
-      if (yrep[n] == 1 && bernoulli_rng(psi) == 0)
+      if (yrep[n] == 1 && bernoulli_rng(1 - psi))
         yrep[n] = 0;
     } else {
       yrep[n] = 0;

@@ -41,11 +41,14 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
+# R Data
+*.RData
+
 # Compiler files
 *.hpp
 *.o
 cover
+cover2
 zicover
-zicover2
-
+carcover
 
