@@ -247,28 +247,85 @@ In `transformed parameters` block,
 ## Fit to the model
 
 ```{r sim1_fit, include=FALSE, cache=TRUE}
-data <- list(N_cls = length(k) + 1,
-             N = N,
-             Y = y,
-             CP = k)
-model <- cmdstan_model("cover.stan")
-fit <- model$sample(data = data,
-                    num_chains = 4, num_cores = 4,
-                    num_samples = 1000, num_warmup = 1000)
-fit1 <- rstan::read_stan_csv(fit$output_files())
-
+results_file <- "fit_sim1.RData"
+if (file.exists(results_file)) {
+  load(results_file)
+} else {
+  data <- list(N_cls = length(k) + 1,
+               N = N,
+               Y = y,
+               CP = k)
+  model <- cmdstan_model("cover.stan")
+  fit <- model$sample(data = data,
+                      num_chains = 4, num_cores = 4,
+                      num_samples = 1000, num_warmup = 1000)
+  fit_sim1 <- rstan::read_stan_csv(fit$output_files())
+  save(fit_sim1, file = results_file)
+}
 ```
 
 ## Posterior summary
 
 ```{r sim1_summary}
-print(fit1, pars = c("p", "delta"))
+print(fit_sim1, pars = c("p", "delta"))
 ```
 
 ## Posterior predictive check
 
 ```{r sim1_ppc, echo=FALSE}
-yrep <-  extract(fit1, pars = "yrep")[["yrep"]]
+yrep <-  extract(fit_sim1, pars = "yrep")[["yrep"]]
+pp_check(y, yrep, ppc_rootogram)
+```
+
+## Model with an explanatory variable
+
+```{r cov1_datagen}
+set.seed(1234)
+N <- 100
+k <- c(0.01, 0.1, 0.25, 0.5, 0.75)
+x <- runif(N, 0, 1)
+logit_p <- -5 + 5 * x + rnorm(N, 0, 0.5)
+p <- 1 / (1 + exp(-logit_p))
+delta <- 0.1
+for (i in 1:N)
+  y[i] <- cover_class(p[i], delta)
+ggplot(data.frame(x = x, y = y)) +
+  geom_jitter(aes(x = x, y = y), size = 2, alpha = 0.8,
+              width = 0, height = 0.05)
+```
+
+
+```{r cov1_fit, include=FALSE, cache=TRUE}
+results_file <- "fit_cov1.RData"
+if (file.exists(results_file)) {
+  load(results_file)
+} else {
+  data <- list(N_cls = length(k) + 1,
+               N = N,
+               X = x,
+               Y = y,
+               CP = k)
+  model <- cmdstan_model("cumcover2.stan")
+  fit <- model$sample(data = data,
+                      num_chains = 4, num_cores = 4,
+                      num_samples = 1000, num_warmup = 1000)
+  fit$cmdstan_diagnose()
+  fit_cov1 <- rstan::read_stan_csv(fit$output_files())
+  save(fit_cov1, file = results_file)
+}
+```
+
+# Results
+
+```{r}
+print(fit_cov1, pars = c("delta", "beta", "sigma"))
+```
+
+
+# PPC
+
+```{r}
+yrep <-  extract(fit_cov1, pars = "yrep")[["yrep"]]
 pp_check(y, yrep, ppc_rootogram)
 ```
 
@@ -284,21 +341,28 @@ Constant cover for all quadrats excluding 0
 ```{r zi_datagen, echo=FALSE}
 N <- 100
 k <- c(0.01, 0.1, 0.25, 0.5, 0.75)
-p <- 0.05
+x <- runif(N, 0, 1)
+p <- 1 / (1 + exp(-(-5 + 5 * x)))
 delta <- 0.1
-omega <- 0.8  # proportion on non-zero
+omega <- 0.7  # proportion on non-zero
+psi <- 0.9    # detection prob.
 
 set.seed(1234)
-y <- cover_class(p, delta, N)
-y[sample(1:N, (1 - omega) * N)] <- 0
-print(y)
+y <- rep(0, N)
+for (i in 1:N) {
+  if (runif(1, 0, 1) < omega) { # present
+    y[i] <- cover_class(p[i], delta)
+    if (y[i] == 1 & runif(1, 0, 1) > psi)
+      y[i] <- 0
+  }
+}
+
 ```
 
 ## View data
 
 ```{r zi_view, echo=FALSE}
-df <- data.frame(y = y)
-ggplot(df) +
+ggplot(data.frame(y = y)) +
   geom_bar(aes(x = y))
 ```
 
@@ -307,17 +371,25 @@ ggplot(df) +
 ```
 model {
   // Observation model
-  {
-    real a = p / delta - p;
-    real b = (1 - p) * (1 - delta) / delta;
-  
-    for (n in 1:N) {
-      if (Y[n] == 0) {
-        0 ~ bernoulli(omega);
-      } else {
-        1 ~ bernoulli(omega);
-        Y[n] ~ coverclass(CP, a, b);
-      }
+  for (n in 1:N) {
+    real a = p[n] / delta - p[n];
+    real b = (1 - p[n]) * (1 - delta) / delta;
+
+    if (Y[n] == 0) {
+      real lp[2];
+      
+      lp[1] = bernoulli_lpmf(0 | omega);
+      lp[2] = bernoulli_lpmf(1 | omega)
+              + coverclass_lpmf(1 | CP, a, b)
+              + bernoulli_lpmf(0 | psi);
+      target += log_sum_exp(lp);
+    } else if (Y[n] == 1) {
+      target += bernoulli_lpmf(1 | omega)
+                + coverclass_lpmf(1 | CP, a, b)
+                + bernoulli_lpmf(1 | psi);
+    } else {
+      target += bernoulli_lpmf(1 | omega)
+                + coverclass_lpmf(Y[n] | CP, a, b);
     }
   }
 }
@@ -328,6 +400,7 @@ model {
 ```{r zi_fitting, include=FALSE, cache=TRUE}
 data <- list(N_cls = length(k) + 1,
              N = N,
+             X = x,
              Y = y,
              CP = k)
 model <- cmdstan_model("zicover.stan")
@@ -340,62 +413,138 @@ fit2 <- rstan::read_stan_csv(fit$output_files())
 ## Posterior summary
 
 ```{r}
-print(fit2, pars = c("p", "delta", "omega"))
+print(fit2, pars = c("delta", "omega", "psi"))
 ```
-
-## Zero-inflation 2
-
-```{r zi2_datagen}
-N <- 100
-k <- c(0.01, 0.1, 0.25, 0.5, 0.75)
-p <- 0.05
-delta <- 0.1
-omega <- 0.8  # proportion on non-zero
-psi <- 0.67   # detection prob. for class 1
-
-set.seed(1234)
-y <- rep(0, N)
-for (i in 1:N) {
-  if (runif(1, 0, 1) < omega) {
-    y[i] <- cover_class(p, delta)
-    if (y[i] == 1 & runif(1, 0, 1) > psi)
-      y[i] <- 0
-  }
-}
-print(y)
-```
-
-## View data
-
-```{r zi2_view, echo=FALSE}
-df <- data.frame(y = y)
-ggplot(df) +
-  geom_bar(aes(x = y))
-```
-
-## Fitting
-
-```{r zi2_fitting, include=FALSE, cache=TRUE}
-data <- list(N_cls = length(k) + 1,
-             N = N,
-             Y = y,
-             CP = k)
-model <- cmdstan_model("zicover2.stan")
-fit <- model$sample(data = data,
-                    num_chains = 4, num_cores = 4,
-                    num_samples = 1000, num_warmup = 1000)
-fit3 <- rstan::read_stan_csv(fit$output_files())
-```
-
-## Summary
 
 ```{r}
-print(fit3, pars = c("p", "delta", "omega", "psi"))
-```
-
-## PPC
-
-```{r zi2_ppc, echo=FALSE}
 yrep <-  extract(fit2, pars = "yrep")[["yrep"]]
 pp_check(y, yrep, ppc_rootogram)
 ```
+
+
+## CAR
+
+```{r, include=FALSE}
+library(geoR)
+
+set.seed(123)
+nx <- 10
+ny <- 10
+fld1 <- grf(nx * ny, grid = "reg", nx = nx, ny = ny, cov.pars=c(0.2, 1 / nx))
+df <- data.frame(x = fld1$coords[, "x"], y = fld1$coords[, "y"],
+                 p = 1 / exp(1 + exp(-fld1$data)))
+df$class <- sapply(df$p, function(p) cover_class(p, delta = 0.01))
+df$class <- factor(df$class)
+#mean(df$p)
+#print(df$class)
+```
+
+## Proportion
+
+```{r car_map, echo=FALSE}
+ggplot(df, aes(x = x, y = y, fill = p)) +
+  geom_bin2d(stat = "identity") +
+  coord_fixed()
+```
+
+## Class
+
+```{r car_class_map, echo=FALSE}
+ggplot(df, aes(x = x, y = y, fill = class)) +
+  geom_bin2d(stat = "identity") +
+  coord_fixed()
+```
+
+## Stan model
+
+Exact sparse CAR models in Stan by Max Joseph
+
+https://mc-stan.org/users/documentation/case-studies/mbjoseph-CARStan.html
+
+```
+model {
+  // Spatial random effects
+  phi ~ sparse_iar(tau, W_sparse, D_sparse, lambda, N, W_n);
+
+  // Observation model
+  for (n in 1:N) {
+    real a = p[n] / delta - p[n];
+    real b = (1 - p[n]) * (1 - delta) / delta;
+
+    Y[n] ~ coverclass(CP, a, b);
+  }
+
+  // Priors
+  tau ~ gamma(2, 2);
+}
+```
+
+
+## Fit
+
+```{r car_stan, include=FALSE, cache=TRUE}
+# Adjacency matrix
+w <- matrix(0, ncol = nx * ny, nrow = nx * ny)
+for (i in 1:(nx * ny)) {
+  x <- (i - 1) %% nx + 1    # x first
+  y <- (i - 1) %/% nx + 1   # y second
+  if (x > 1)
+    w[i, (y - 1) * nx + x - 1] <- 1 # [x - 1, y]
+  if (x < nx)
+    w[i, (y - 1) * nx + x + 1] <- 1 # [x + 1, y]
+  if (y > 1)
+    w[i, (y - 2) * nx + x] <- 1     # [x, y - 1]
+  if (y < ny)
+    w[i, y * nx + x] <- 1           # [x, y + 1]
+}
+
+data <- list(N_cls = length(k) + 1,
+             N = nrow(df),
+             Y = df$class,
+             CP = k,
+             W = w,
+             W_n = sum(w) / 2)
+model <- cmdstan_model("carcover.stan")
+fit <- model$sample(data = data,
+                    num_chains = 4, num_cores = 4,
+                    num_samples = 4000, num_warmup = 4000,
+                    refresh = 400)
+fit4 <- rstan::read_stan_csv(fit$output_files())
+```
+
+## Results
+
+```{r car_reults}
+print(fit4, pars = c("delta", "tau"))
+#print(fit4, pars = c("p"))
+#stan_trace(fit4, pars = c("delta", "tau"))
+#yrep <-  extract(fit4, pars = "yrep")[["yrep"]]
+#pp_check(df$class, yrep, ppc_rootogram) +
+#  ggplot2::scale_x_discrete(name = "Class", limits = as.character(1:6))
+```
+
+## Show results
+
+```{r car_result_map, echo=FALSE}
+df$estimate <- get_posterior_mean(fit4, pars = "p")[, "mean-all chains"]
+ggplot(df, aes(x = x, y = y, fill = estimate)) +
+  geom_bin2d(stat = "identity") +
+  coord_fixed()
+```
+
+## True vs. Estimated Cover
+
+```{r car_comp, echo=FALSE}
+ggplot(df, aes(x = p, y = estimate)) +
+  geom_point() +
+  xlim(0, 0.3) + ylim(0, 0.3) +
+  labs(x = "True cover", y = "Estimated cover") +
+  geom_abline(slope = 1) +
+  coord_fixed()
+```
+
+# Summary
+
+## Cover class data
+
+- Modeling
