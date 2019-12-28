@@ -64,7 +64,7 @@ parameters {
 }
 
 model {
-  // Observation model
+  // Observation
   {
     real a = p / delta - p;
     real b = (1 - p) * (1 - delta) / delta;

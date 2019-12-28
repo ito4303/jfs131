@@ -5,8 +5,10 @@ date: "2020-03-27"
 institute: "森林総合研究所北海道支所"
 output:
   revealjs::revealjs_presentation:
+    self_contatined: false
     theme: white
     transition: slide
+    css: style.css
 ---
 
 ```{r setup, include=FALSE}
@@ -21,22 +23,36 @@ set_cmdstan_path("/usr/local/cmdstan")
 library(bayesplot)
 ```
 
-# はじめに
+# はじめに {#introduction}
 
-## 被度階級データ
+## 今回のコード
 
+<div style="height: 3em;">
+</div>
+
+https://github.com/ito4303/jfs131
+で公開しています。
+
+## 被度階級データ {#cover_class_data}
+
+<div class="text">
 - 被度（調査面積に対する対象植物の被覆度）は、もともとは0〜1の範囲の連続値。
 - 実際には、{'+', '0', '1', '2', '3', '4', '5'}といった階級データとして記録されることが多い。
 - また、測定値は目視で決められることが多い。
+</div>
 
 ## 被度階級データの問題点
 
+<div class="text">
 - 順序尺度データなので、数値的な取り扱いが簡単ではない。
 - 測定誤差の問題。
+</div>
 
 ## 被度（連続値）のモデリング
 
+<div class="text">
 0〜1の連続値をとるので、ベータ分布にあてはめるのは自然な発想。
+</div>
 
 $$
 y \sim \mathrm{Beta}(\alpha, \beta)
@@ -44,13 +60,15 @@ $$
 
 <p style="height:1em;"></p>
 
+<div class="text">
 平均$\mu$を使ったパラメータ化
+</div>
 
 $$
 y \sim \mathrm{Beta}\left(\frac{\mu}{\delta}-\mu,\frac{(1-\mu)(1-\delta)}{\delta}\right)
 $$
 
-## ベータ分布(mu=0.6のとき) {#beta_distribution}
+## ベータ分布($\mu$=0.6のとき) {#beta_distribution}
 
 ```{r plot_beta_distribution, echo=FALSE, warning=FALSE}
 p <- 0.6
@@ -85,7 +103,7 @@ ggplot(df, aes(x = Cover, y = Density, color = delta)) +
   theme(legend.position = "none")
 ```
 
-## Changing delta
+<!-- Function definition -->
 
 ```{r gen_sim_data, include=FALSE}
 cover_prob <- function(cover, cut_points, a, b) {
@@ -128,46 +146,49 @@ sim_cover_prob <- function(delta = c(0.001, 0.01, 0.05, 0.1),
 }
 ```
 
-## Classes
+## 被度階級 {#cover_class}
 
-Class definition
+<div class="text">
+今回は以下のように定義する。
 
 1: 0–0.01 (including 0), 2: 0.01–0.1, 3: 0.1–0.25, 4: 0.25–0.5, 5: 0.5–0.75, 6: 0.75–1
 
+$\delta$を変化させると...
+</div>
 
 ## $\delta$=0.001
-```{r delta=0.001, echo=FALSE}
+```{r delta_0.001, echo=FALSE}
 sim_cover_prob(delta = 0.001)
 ```
 
 ## $\delta$=0.01
-```{r delta=0.01, echo=FALSE}
+```{r delta_0.01, echo=FALSE}
 sim_cover_prob(delta = 0.01)
 ```
 
 ## $\delta$=0.05
-```{r delta=0.05, echo=FALSE}
+```{r delta_0.05, echo=FALSE}
 sim_cover_prob(delta = 0.05)
 ```
 
 ## $\delta$=0.1
-```{r delta=0.1, echo=FALSE}
+```{r delta_0.1, echo=FALSE}
 sim_cover_prob(delta = 0.1)
 ```
 
 ## $\delta$=0.2
-```{r delta=0.2, echo=FALSE}
+```{r delta_0.2, echo=FALSE}
 sim_cover_prob(delta = 0.2)
 ```
 
 ## $\delta$=0.4
-```{r delta=0.4, echo=FALSE}
+```{r delta_0.4, echo=FALSE}
 sim_cover_prob(delta = 0.4)
 ```
 
-# Modeling
+# 被度階級のモデリング {#model_1}
 
-## Simulated data
+## 模擬データ {#simdata1}
 
 ```{r sim1_datagen, include=FALSE}
 cover_class <- function(q, delta = 0.1, N = 1,
@@ -193,17 +214,19 @@ set.seed(1234)
 y <- cover_class(p, delta, N)
 ```
 
-Data
+<div class="text">
+- 被度 = 0.6
+- $\delta$ = 0.05 とする。
+- 10回測定する。
 
-- true cover = 0.6
-- set delta = 0.05
-- 10 times measurements
+生成されたデータ
+</div>
 
 ```{r print_sim1, echo=FALSE}
 print(y)
 ```
 
-## Stan code 1 (functions block)
+## Stan コード {#stan_code_1}
 
 ```
 functions {
@@ -225,11 +248,11 @@ functions {
 }
 ```
 
-## Stan code 2 (model block)
+---
 
 ```
 model {
-  // Observation model
+  // Observation
   {
     real a = p / delta - p;
     real b = (1 - p) * (1 - delta) / delta;
@@ -239,12 +262,9 @@ model {
   }
 }
 ```
+$\mu$のところを`p`にした。
 
-In `transformed parameters` block,
-
-`p = inv_logit(beta + beta_x * x + ...)`
-
-## Fit to the model
+## モデルへのあてはめ {#fit_1}
 
 ```{r sim1_fit, include=FALSE, cache=TRUE}
 results_file <- "fit_sim1.RData"
@@ -264,22 +284,36 @@ if (file.exists(results_file)) {
 }
 ```
 
-## Posterior summary
+## 事後分布の要約 {#summary_1}
 
 ```{r sim1_summary}
 print(fit_sim1, pars = c("p", "delta"))
 ```
 
-## Posterior predictive check
+## 事後予測チェック {#ppc_1}
 
 ```{r sim1_ppc, echo=FALSE}
 yrep <-  extract(fit_sim1, pars = "yrep")[["yrep"]]
 pp_check(y, yrep, ppc_rootogram)
 ```
 
-## Model with an explanatory variable
+# 共変量のあるモデル {#model_2}
 
-```{r cov1_datagen}
+## 模擬データ {#simdata_2}
+
+<div class="text">
+- 共変量: X (0〜1の連続値)
+- 次式で被度が生成される。
+
+$$
+\mathrm{logit}(p) = -5 + 5 X + \epsilon \\
+\epsilon \sim \mathrm{Normal}(0, \sigma)
+$$
+</div>
+
+## グラフ {#plot_2}
+
+```{r cov1_datagen, echo=FALSE}
 set.seed(1234)
 N <- 50
 R <- 2
@@ -297,6 +331,35 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
   geom_jitter(aes(x = x, y = y, color = rep), size = 2, alpha = 0.8,
               width = 0, height = 0.05) +
   scale_y_discrete(name = "Class", limits = 1:6, breaks = as.character(1:6))
+```
+
+## Stan コード {#stan_code_2_1}
+
+```
+transformed parameters {
+  vector<lower = 0, upper = 1>[N] p;          // proportion of cover
+
+  // System
+  p = inv_logit(beta[1] + beta[2] * X + sigma * err);
+}
+```
+
+---
+
+```
+model {
+  // Observation
+  for (n in 1:N) {
+    real a = p[n] / delta - p[n];
+    real b = (1 - p[n]) * (1 - delta) / delta;
+
+    for (r in 1:R)
+      Y[n, r] ~ coverclass(CP, a, b);
+  }
+  // System
+  err ~ std_normal();
+  sigma ~ normal(0, 5);
+}
 ```
 
 <!-- Fitting -->
@@ -322,31 +385,36 @@ if (file.exists(results_file)) {
 }
 ```
 
-# Results
+## 結果の要約 {#summary_2}
 
-```{r}
+```{r summary_2, echo=FALSE}
 print(fit_cov1, pars = c("delta", "beta", "sigma"))
 ```
 
 
-# PPC
+## 事後予測チェック {#ppc_2}
 
-```{r}
+```{r ppc_2, echo=FALSE}
 yrep <-  extract(fit_cov1, pars = "yrep")[["yrep"]]
 pp_check(y[, 1], yrep, ppc_rootogram)
-pp_check(y[, 2], yrep, ppc_rootogram)
+#pp_check(y[, 2], yrep, ppc_rootogram)
 ```
 
-## Zero-inflation
+1回目の測定について
 
-Class definition in this model
+# ゼロ過剰モデル {#zero-inflation}
 
-0: 0, 
-1: 0–0.01 (excluding 0), 2: 0.01–0.1, 3: 0.1–0.25, 4: 0.25–0.5, 5: 0.5–0.75, 6: 0.75–1
+## 模擬データ {#simdata_3}
 
-Constant cover for all quadrats excluding 0
+<div class="text">
+- このモデルでの被度
+    - 0: 0, 1: 0–0.01 (excluding 0), 2: 0.01–0.1, 3: 0.1–0.25, 4: 0.25–0.5, 5: 0.5–0.75, 6: 0.75–1
+- 分布している確率: $\omega$
+- 被度1のときの発見確率: $\psi$
+- 被度2以上のときは必ず発見できるとする。
+</div>
 
-```{r zi_datagen, echo=FALSE}
+```{r zi_datagen, include=FALSE}
 set.seed(1234)
 N <- 50
 R <- 2
@@ -369,7 +437,7 @@ for (n in 1:N) {
 }
 ```
 
-## View data
+## 生成されたデータ {#view_simdata_3}
 
 ```{r zi_view, echo=FALSE}
 ggplot(data.frame(x = rep(x, R), y = c(y),
@@ -379,7 +447,7 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
   scale_y_discrete(name = "Class", limits = 0:6, breaks = as.character(0:6))
 ```
 
-## Stan code
+## Stan コード {#stan_code_3}
 
 ```
 model {
@@ -397,6 +465,11 @@ model {
               + bernoulli_lpmf(0 | psi) * R;
       target += log_sum_exp(lp);
     } else {
+```
+
+---
+
+```
       for (r in 1:R) {
         if (Y[n, r] == 0) {
           target += bernoulli_lpmf(1 | omega)
@@ -413,10 +486,6 @@ model {
       }
     }
   }
-  // System
-  err ~ std_normal();
-  sigma ~ normal(0, 5);
-}
 ```
 
 <!-- Fitting -->
@@ -442,57 +511,74 @@ if (file.exists(results_file)) {
 }
 ```
 
-## Posterior summary
+## 結果の要約
 
-```{r}
+```{r summary_3, echo=FALSE}
 print(fit_zi, pars = c("delta", "omega", "psi", "beta", "sigma"))
 ```
 
-```{r}
+## 事後予測チェック
+
+```{r ppc_3, echo=FALSE}
 yrep <-  extract(fit_zi, pars = "yrep")[["yrep"]]
 pp_check(y[, 1], yrep, ppc_rootogram)
-pp_check(y[, 2], yrep, ppc_rootogram)
+#pp_check(y[, 2], yrep, ppc_rootogram)
 ```
+ 
 
+# 空間データ
 
-## CAR
+## 模擬データ {#simdata_4}
 
-```{r, include=FALSE}
+```{r car_datagen, include=FALSE}
 library(geoR)
 
 set.seed(123)
 nx <- 10
 ny <- 10
 fld1 <- grf(nx * ny, grid = "reg", nx = nx, ny = ny, cov.pars=c(0.2, 1 / nx))
-df <- data.frame(x = fld1$coords[, "x"], y = fld1$coords[, "y"],
-                 p = 1 / exp(1 + exp(-fld1$data)))
-df$class <- sapply(df$p, function(p) cover_class(p, delta = 0.01))
-df$class <- factor(df$class)
+df <- data.frame(X = fld1$coords[, "x"], Y = fld1$coords[, "y"],
+                 Prop = 1 / exp(1 + exp(-fld1$data)))
+df$class <- sapply(df$Prop, function(p) cover_class(p, delta = 0.01))
 #mean(df$p)
 #print(df$class)
 ```
 
-## Proportion
+## 生成された被度（割合） {#car_cover_prop}
+
 
 ```{r car_map, echo=FALSE}
-ggplot(df, aes(x = x, y = y, fill = p)) +
+ggplot(df, aes(x = X, y = Y, fill = Prop)) +
   geom_bin2d(stat = "identity") +
   coord_fixed()
 ```
 
-## Class
+## 生成された被度階級 {#car_covar_class}
 
 ```{r car_class_map, echo=FALSE}
-ggplot(df, aes(x = x, y = y, fill = class)) +
+ggplot(df, aes(x = X, y = Y, fill = factor(class))) +
   geom_bin2d(stat = "identity") +
+  scale_fill_discrete(name = "Class") +
   coord_fixed()
 ```
 
-## Stan model
+## Stan による Conditional AutoRegressive (CAR) モデル {#stan_car}
 
+<div class="text">
 Exact sparse CAR models in Stan by Max Joseph
 
 https://mc-stan.org/users/documentation/case-studies/mbjoseph-CARStan.html
+</div>
+
+## Stan コード {#stan_code_4}
+
+```
+transformed parameters {
+  vector[N] p = inv_logit(phi);
+}
+```
+
+---
 
 ```
 model {
@@ -512,43 +598,49 @@ model {
 }
 ```
 
-
-## Fit
+<!-- Fitting -->
 
 ```{r car_stan, include=FALSE, cache=TRUE}
-# Adjacency matrix
-w <- matrix(0, ncol = nx * ny, nrow = nx * ny)
-for (i in 1:(nx * ny)) {
-  x <- (i - 1) %% nx + 1    # x first
-  y <- (i - 1) %/% nx + 1   # y second
-  if (x > 1)
-    w[i, (y - 1) * nx + x - 1] <- 1 # [x - 1, y]
-  if (x < nx)
-    w[i, (y - 1) * nx + x + 1] <- 1 # [x + 1, y]
-  if (y > 1)
-    w[i, (y - 2) * nx + x] <- 1     # [x, y - 1]
-  if (y < ny)
-    w[i, y * nx + x] <- 1           # [x, y + 1]
-}
+results_file <- "fit_car.RData"
+if (file.exists(results_file)) {
+  load(results_file)
+} else {
+  # Adjacency matrix
+  w <- matrix(0, ncol = nx * ny, nrow = nx * ny)
+  for (i in 1:(nx * ny)) {
+    x <- (i - 1) %% nx + 1    # x first
+    y <- (i - 1) %/% nx + 1   # y second
+    if (x > 1)
+      w[i, (y - 1) * nx + x - 1] <- 1 # [x - 1, y]
+    if (x < nx)
+      w[i, (y - 1) * nx + x + 1] <- 1 # [x + 1, y]
+    if (y > 1)
+      w[i, (y - 2) * nx + x] <- 1     # [x, y - 1]
+    if (y < ny)
+      w[i, y * nx + x] <- 1           # [x, y + 1]
+  }
 
-data <- list(N_cls = length(k) + 1,
-             N = nrow(df),
-             Y = df$class,
-             CP = k,
-             W = w,
-             W_n = sum(w) / 2)
-model <- cmdstan_model("carcover.stan")
-fit <- model$sample(data = data,
-                    num_chains = 4, num_cores = 4,
-                    num_samples = 4000, num_warmup = 4000,
-                    refresh = 400)
-fit4 <- rstan::read_stan_csv(fit$output_files())
+  data <- list(N_cls = length(k) + 1,
+               N = nrow(df),
+               Y = df$class,
+               CP = k,
+               W = w,
+               W_n = sum(w) / 2)
+  model <- cmdstan_model("carcover.stan")
+  fit <- model$sample(data = data,
+                      num_chains = 4, num_cores = 4,
+                      num_samples = 4000, num_warmup = 4000,
+                      refresh = 400)
+  fit$cmdstan_diagnose()
+  fit_car <- rstan::read_stan_csv(fit$output_files())
+  save(fit_car, file = results_file)
+}
 ```
 
-## Results
+## 結果の要約 {#summary_4}
 
-```{r car_reults}
-print(fit4, pars = c("delta", "tau"))
+```{r car_reults, echo=FALSE}
+print(fit_car, pars = c("delta", "tau"))
 #print(fit4, pars = c("p"))
 #stan_trace(fit4, pars = c("delta", "tau"))
 #yrep <-  extract(fit4, pars = "yrep")[["yrep"]]
@@ -556,19 +648,19 @@ print(fit4, pars = c("delta", "tau"))
 #  ggplot2::scale_x_discrete(name = "Class", limits = as.character(1:6))
 ```
 
-## Show results
+## 推定された被度（割合） {#est_4}
 
 ```{r car_result_map, echo=FALSE}
-df$estimate <- get_posterior_mean(fit4, pars = "p")[, "mean-all chains"]
-ggplot(df, aes(x = x, y = y, fill = estimate)) +
+df$Estimate <- get_posterior_mean(fit_car, pars = "p")[, "mean-all chains"]
+ggplot(df, aes(x = X, y = Y, fill = Estimate)) +
   geom_bin2d(stat = "identity") +
   coord_fixed()
 ```
 
-## True vs. Estimated Cover
+## 真値と推定値との比較 {#comp_4}
 
 ```{r car_comp, echo=FALSE}
-ggplot(df, aes(x = p, y = estimate)) +
+ggplot(df, aes(x = Prop, y = Estimate)) +
   geom_point() +
   xlim(0, 0.3) + ylim(0, 0.3) +
   labs(x = "True cover", y = "Estimated cover") +
@@ -576,8 +668,8 @@ ggplot(df, aes(x = p, y = estimate)) +
   coord_fixed()
 ```
 
-# Summary
+# まとめ {#Summary}
 
-## Cover class data
+## 被度階級データ {#cover_class_data_summary}
 
 - Modeling
