@@ -138,10 +138,10 @@ sim_cover_prob <- function(delta = c(0.001, 0.01, 0.05, 0.1),
                    Class = factor(rep(rep(1:(nk + 1), length(q)), length(delta))))
   plt <- ggplot(df) +
     geom_vline(xintercept = cut_points, color = "red", size = 0.33, linetype = 2) +
-    geom_line(aes(x = Cover, y = Probability, color = Class), size = 0.67) +
+    geom_line(aes(x = Cover, y = Probability, color = Class), size = 1.2) +
     scale_color_manual(values = colorblind_pal()(8)[c(1, 2, 3, 4, 6, 7)]) +
     facet_wrap(~delta) +
-    theme_bw()
+    theme_bw(base_family = "Helvetica", base_size = 24)
   print(plt)
 }
 ```
@@ -286,7 +286,7 @@ if (file.exists(results_file)) {
 
 ## 事後分布の要約 {#summary_1}
 
-```{r sim1_summary}
+```{r sim1_summary, echo=FALSE}
 print(fit_sim1, pars = c("p", "delta"))
 ```
 
@@ -328,9 +328,10 @@ for (n in 1:N)
     y[n, r] <- cover_class(p[n], delta)
 ggplot(data.frame(x = rep(x, R), y = c(y),
                   rep = factor(rep(1:R, each = N)))) +
-  geom_jitter(aes(x = x, y = y, color = rep), size = 2, alpha = 0.8,
+  geom_jitter(aes(x = x, y = y, color = rep), size = 4, alpha = 0.8,
               width = 0, height = 0.05) +
-  scale_y_discrete(name = "Class", limits = 1:6, breaks = as.character(1:6))
+  scale_y_discrete(name = "Class", limits = 1:6, breaks = as.character(1:6)) +
+  theme_gray(base_family = "Helvetica", base_size = 24)
 ```
 
 ## Stan コード {#stan_code_2_1}
@@ -396,7 +397,8 @@ print(fit_cov1, pars = c("delta", "beta", "sigma"))
 
 ```{r ppc_2, echo=FALSE}
 yrep <-  extract(fit_cov1, pars = "yrep")[["yrep"]]
-pp_check(y[, 1], yrep, ppc_rootogram)
+pp_check(y[, 1], yrep, ppc_rootogram) +
+  theme_gray(base_family = "Helvetica", base_size = 24)
 #pp_check(y[, 2], yrep, ppc_rootogram)
 ```
 
@@ -442,9 +444,10 @@ for (n in 1:N) {
 ```{r zi_view, echo=FALSE}
 ggplot(data.frame(x = rep(x, R), y = c(y),
                   rep = factor(rep(1:R, each = N)))) +
-  geom_jitter(aes(x = x, y = y, color = rep), size = 2, alpha = 0.8,
+  geom_jitter(aes(x = x, y = y, color = rep), size = 4, alpha = 0.8,
               width = 0, height = 0.1) +
-  scale_y_discrete(name = "Class", limits = 0:6, breaks = as.character(0:6))
+  scale_y_discrete(name = "Class", limits = 0:6, breaks = as.character(0:6)) +
+  theme_gray(base_family = "Helvetica", base_size = 24)
 ```
 
 ## Stan コード {#stan_code_3}
@@ -521,7 +524,8 @@ print(fit_zi, pars = c("delta", "omega", "psi", "beta", "sigma"))
 
 ```{r ppc_3, echo=FALSE}
 yrep <-  extract(fit_zi, pars = "yrep")[["yrep"]]
-pp_check(y[, 1], yrep, ppc_rootogram)
+pp_check(y[, 1], yrep, ppc_rootogram) +
+  theme_gray(base_family = "Helvetica", base_size = 24)
 #pp_check(y[, 2], yrep, ppc_rootogram)
 ```
  
@@ -533,7 +537,7 @@ pp_check(y[, 1], yrep, ppc_rootogram)
 ```{r car_datagen, include=FALSE}
 library(geoR)
 
-set.seed(123)
+set.seed(1234)
 nx <- 10
 ny <- 10
 fld1 <- grf(nx * ny, grid = "reg", nx = nx, ny = ny, cov.pars=c(0.2, 1 / nx))
@@ -550,7 +554,8 @@ df$class <- sapply(df$Prop, function(p) cover_class(p, delta = 0.01))
 ```{r car_map, echo=FALSE}
 ggplot(df, aes(x = X, y = Y, fill = Prop)) +
   geom_bin2d(stat = "identity") +
-  coord_fixed()
+  coord_fixed() +
+  theme_gray(base_family = "Helvetica", base_size = 24)
 ```
 
 ## 生成された被度階級 {#car_covar_class}
@@ -559,7 +564,8 @@ ggplot(df, aes(x = X, y = Y, fill = Prop)) +
 ggplot(df, aes(x = X, y = Y, fill = factor(class))) +
   geom_bin2d(stat = "identity") +
   scale_fill_discrete(name = "Class") +
-  coord_fixed()
+  coord_fixed() +
+  theme_gray(base_family = "Helvetica", base_size = 24)
 ```
 
 ## Stan による Conditional AutoRegressive (CAR) モデル {#stan_car}
@@ -654,18 +660,20 @@ print(fit_car, pars = c("delta", "tau"))
 df$Estimate <- get_posterior_mean(fit_car, pars = "p")[, "mean-all chains"]
 ggplot(df, aes(x = X, y = Y, fill = Estimate)) +
   geom_bin2d(stat = "identity") +
-  coord_fixed()
+  coord_fixed() +
+  theme_gray(base_family = "Helvetica", base_size = 24)
 ```
 
 ## 真値と推定値との比較 {#comp_4}
 
 ```{r car_comp, echo=FALSE}
 ggplot(df, aes(x = Prop, y = Estimate)) +
-  geom_point() +
+  geom_point(size = 3) +
   xlim(0, 0.3) + ylim(0, 0.3) +
   labs(x = "True cover", y = "Estimated cover") +
   geom_abline(slope = 1) +
-  coord_fixed()
+  coord_fixed() +
+  theme_gray(base_family = "Helvetica", base_size = 24)
 ```
 
 # まとめ {#Summary}
