@@ -48,10 +48,12 @@ https://github.com/ito4303/jfs131
 - 測定誤差の問題。
 </div>
 
-## 被度（連続値）のモデリング
+# 被度のモデリング
+
+## ベータ分布
 
 <div class="text">
-0〜1の連続値をとるので、ベータ分布にあてはめるのは自然な発想。
+被度（連続値）は0〜1の値をとるので、ベータ分布にあてはめるのは自然な発想。
 </div>
 
 $$
@@ -68,10 +70,10 @@ $$
 y \sim \mathrm{Beta}\left(\frac{\mu}{\delta}-\mu,\frac{(1-\mu)(1-\delta)}{\delta}\right)
 $$
 
-## ベータ分布($\mu$=0.6のとき) {#beta_distribution}
+## ベータ分布($\mu$=0.5のとき) {#beta_distribution1}
 
 ```{r plot_beta_distribution, echo=FALSE, warning=FALSE}
-p <- 0.6
+p <- 0.5
 delta = c(0.001, 0.01, 0.1, 0.2, 0.4)
 a <- p / delta - p
 b <- (1 - p) * (1 - delta) / delta
@@ -89,19 +91,53 @@ ggplot(df, aes(x = Cover, y = Density, color = delta)) +
   scale_color_manual(values = colors) +
 #  annotate("text", x = 0, y = 24, hjust = 0,
 #           label = "mu=0.6", color = "black") +
-  annotate("text", x = 0.625, y = 20, hjust = 0, size = 6,
+  annotate("text", x = 0.53, y = 20, hjust = 0, size = 6,
            label = bquote(delta == .(delta[1])), color = colors[1]) +
-  annotate("text", x = 0.65, y = 6.5, hjust = 0, size = 6,
+  annotate("text", x = 0.55, y = 6.5, hjust = 0, size = 6,
            label = bquote(delta == .(delta[2])), color = colors[2]) +
-  annotate("text", x = 0.68, y = 3.2, hjust = 0, size = 6,
+  annotate("text", x = 0.625, y = 3.2, hjust = 0, size = 6,
            label = bquote(delta == .(delta[3])), color = colors[3]) +
-  annotate("text", x = 0.8, y = 2.35, hjust = 0, size = 6,
+  annotate("text", x = 0.75, y = 2.35, hjust = 0, size = 6,
            label = bquote(delta == .(delta[4])), color = colors[4]) +
-  annotate("text", x = 1, y = 10, hjust = 1, size = 6,
+  annotate("text", x = 1, y = 4, hjust = 1, size = 6,
            label = bquote(delta == .(delta[5])), color = colors[5]) +
   theme_gray(base_family = "Helvetica", base_size = 24) +
   theme(legend.position = "none")
 ```
+
+## ベータ分布($\mu$=0.05のとき) {#beta_distribution2}
+
+```{r plot_beta_distribution2, echo=FALSE, warning=FALSE}
+p <- 0.05
+delta = c(0.001, 0.01, 0.1, 0.2, 0.4)
+a <- p / delta - p
+b <- (1 - p) * (1 - delta) / delta
+x <- rep(seq(1e-3, 1 - 1e-3, length = 300), length(delta))
+y <- matrix(0, ncol = length(delta), nrow = length(x))
+for (d in seq_along(delta))
+  y[, d] <- (sapply(seq_along(x), function(i) dbeta(x[i], a[d], b[d])))
+
+df <- data.frame(Cover = x,
+                 Density = c(y),
+                 delta = factor(rep(delta, each = length(x))))
+colors <- colorblind_pal()(8)[c(7, 6, 3, 2, 4)]
+ggplot(df, aes(x = Cover, y = Density, color = delta)) +
+  geom_line(size = 2, alpha = 0.9) +
+  scale_color_manual(values = colors) +
+  annotate("text", x = 0.075, y = 50, hjust = 0, size = 6,
+           label = bquote(delta == .(delta[1])), color = colors[1]) +
+  annotate("text", x = 0.09, y = 18, hjust = 0, size = 6,
+           label = bquote(delta == .(delta[2])), color = colors[2]) +
+  annotate("text", x = 0.11, y = 7.5, hjust = 0, size = 6,
+           label = bquote(delta == .(delta[3])), color = colors[3]) +
+  annotate("text", x = 0.25, y = 3, hjust = 0, size = 6,
+           label = bquote(delta == .(delta[4])), color = colors[4]) +
+  annotate("text", x = 0.5, y = 3, hjust = 0, size = 6,
+           label = bquote(delta == .(delta[5])), color = colors[5]) +
+  theme_gray(base_family = "Helvetica", base_size = 24) +
+  theme(legend.position = "none")
+```
+
 
 <!-- Function definition -->
 
