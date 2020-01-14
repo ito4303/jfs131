@@ -1,0 +1,17 @@
+.text {
+  text-align: left;
+}
+.reveal h1,
+.reveal h2 {
+  color: blue;
+  text-transform: none;
+  font-family: 'Noto Sans CJK JP', 'Hiragino Sans', sans-serif;
+}
+
+.reveal section img {
+  margin: auto;
+  border: none;
+  width: auto;
+  height: auto;
+  max-height: 540px;
+}
