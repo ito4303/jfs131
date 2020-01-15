@@ -13,21 +13,6 @@
 
 functions {
   /**
-  * Return the log probability of a proper conditional autoregressive (CAR) prior 
-  * with a sparse representation for the adjacency matrix
-  *
-  * @param phi Vector containing the parameters with a CAR prior
-  * @param tau Precision parameter for the CAR prior (real)
-  * @param alpha Dependence (usually spatial) parameter for the CAR prior (real)
-  * @param W_sparse Sparse representation of adjacency matrix (int array)
-  * @param n Length of phi (int)
-  * @param W_n Number of adjacent pairs (int)
-  * @param D_sparse Number of neighbors for each location (vector)
-  * @param lambda Eigenvalues of D^{-1/2}*W*D^{-1/2} (vector)
-  *
-  * @return Log probability density of CAR prior up to additive constant
-  */
-  /**
   * Return the log probability of a proper intrinsic autoregressive (IAR) prior 
   * with a sparse representation for the adjacency matrix
   *
