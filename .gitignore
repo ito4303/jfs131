@@ -52,7 +52,9 @@ cover2
 zicover
 carcover
 
-# macOS files
+# other files
 .DS_Store
+*.zip
+Documents/
 
 
