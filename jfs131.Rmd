@@ -604,6 +604,12 @@ ggplot(df, aes(x = X, y = Y, fill = factor(class))) +
   theme_gray(base_family = "Helvetica", base_size = 24)
 ```
 
+##  空間自己相関 {#autocorrelation}
+
+となりとは近い値をとる
+
+![](Images/autocorrelation.png)
+
 ## Stan による Conditional AutoRegressive (CAR) モデル {#stan_car}
 
 <div class="text">
@@ -716,4 +722,9 @@ ggplot(df, aes(x = Prop, y = Estimate)) +
 
 ## 被度階級データ {#cover_class_data_summary}
 
-- Modeling
+- 扱いづらい被度階級データ
+- 階層モデリング
+  - データが観測される過程
+  - データの背後にあるシステム
+- うまく扱える
+
