@@ -37,7 +37,7 @@ https://github.com/ito4303/jfs131
 
 <div class="text">
 - 被度（調査面積に対する対象植物の被覆度）は、もともとは0〜1の範囲の連続値。
-- 実際には、{'+', '0', '1', '2', '3', '4', '5'}などといった階級データとして記録されることが多い。
+- 実際には、{+, 1, 2, 3, 4, 5}などといった階級データとして記録されることが多い。
 - また、測定値は目視で決められることが多い。
 </div>
 
@@ -270,12 +270,13 @@ print(y)
 
 ## Stan コード {#stan_code_1}
 
+被度階級の確率分布を関数として定義
+
 ```
 functions {
   real coverclass_lpmf(int Y, vector CP, real a, real b) {
     int n_cls;
     real gamma;
-
     n_cls = num_elements(CP) + 1;
     if (Y <= 1) {  // 0 or 1
       gamma =  inc_beta(a, b, CP[1]);
@@ -291,6 +292,8 @@ functions {
 ```
 
 ---
+
+モデルの定義
 
 ```
 model {
@@ -339,6 +342,8 @@ yrep <-  extract(fit_sim1, pars = "yrep")[["yrep"]]
 pp_check(y, yrep, ppc_rootogram)
 ```
 
+とくに矛盾はない
+
 # 共変量のあるモデル {#model_2}
 
 ## 模擬データ {#simdata_2}
@@ -378,6 +383,8 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
 
 ## Stan コード {#stan_code_2_1}
 
+被度`p`をロジットリンクで線形予測子と結びつける
+
 ```
 transformed parameters {
   vector<lower = 0, upper = 1>[N] p;          // proportion of cover
@@ -388,6 +395,8 @@ transformed parameters {
 ```
 
 ---
+
+モデルの定義
 
 ```
 model {
@@ -444,7 +453,8 @@ pp_check(y[, 1], yrep, ppc_rootogram) +
 #pp_check(y[, 2], yrep, ppc_rootogram)
 ```
 
-1回目の測定について
+1回目の測定について表示
+<!--ほかについても とくに矛盾はなかった-->
 
 # ゼロ過剰モデル {#zero-inflation}
 
@@ -494,6 +504,8 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
 
 ## Stan コード {#stan_code_3}
 
+モデルの定義
+
 ```
 model {
   // Observation model
@@ -511,6 +523,8 @@ model {
       target += log_sum_exp(lp);
     } else {
 ```
+
+つづく
 
 ---
 
@@ -570,11 +584,19 @@ pp_check(y[, 1], yrep, ppc_rootogram) +
   theme_gray(base_family = "Helvetica", base_size = 24)
 #pp_check(y[, 2], yrep, ppc_rootogram)
 ```
- 
+
+<!--とくに矛盾はない-->
 
 # 空間データ
 
 ## 模擬データ {#simdata_4}
+
+10×10=100個の方形区で、被度を生成する
+
+↓
+
+被度階級に変換
+
 
 ```{r car_datagen, include=FALSE}
 library(geoR)
@@ -626,6 +648,8 @@ https://mc-stan.org/users/documentation/case-studies/mbjoseph-CARStan.html
 
 ## Stan コード {#stan_code_4}
 
+`phi`の逆ロジットが被度`p`
+
 ```
 transformed parameters {
   vector[N] p = inv_logit(phi);
@@ -633,6 +657,8 @@ transformed parameters {
 ```
 
 ---
+
+`sparse_iar`で、空間自己相関の事前分布
 
 ```
 model {
