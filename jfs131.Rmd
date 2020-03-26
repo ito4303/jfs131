@@ -6,7 +6,7 @@ institute: "森林総合研究所北海道支所"
 output:
   revealjs::revealjs_presentation:
     self_contatined: false
-    theme: white
+    theme: simple
     transition: slide
     css: style.css
 ---
@@ -37,7 +37,7 @@ https://github.com/ito4303/jfs131
 
 <div class="text">
 - 被度（調査面積に対する対象植物の被覆度）は、もともとは0〜1の範囲の連続値。
-- 実際には、{'+', '0', '1', '2', '3', '4', '5'}といった階級データとして記録されることが多い。
+- 実際には、{+, 1, 2, 3, 4, 5}などといった階級データとして記録されることが多い。
 - また、測定値は目視で決められることが多い。
 </div>
 
@@ -45,7 +45,7 @@ https://github.com/ito4303/jfs131
 
 <div class="text">
 - 順序尺度データなので、数値的な取り扱いが簡単ではない。
-- 測定誤差の問題。
+- 目視による測定では、誤差が大きいと考えられる。
 </div>
 
 # 被度のモデリング
@@ -69,6 +69,12 @@ $$
 $$
 y \sim \mathrm{Beta}\left(\frac{\mu}{\delta}-\mu,\frac{(1-\mu)(1-\delta)}{\delta}\right)
 $$
+
+<div class="text">
+$\delta$はもともと、pin-point法による被度測定における方形区内の分布相関 (Damgaard 2012) 
+
+しかし、被度測定における不確実性とも解釈可能。
+</div>
 
 ## ベータ分布($\mu$=0.5のとき) {#beta_distribution1}
 
@@ -187,9 +193,9 @@ sim_cover_prob <- function(delta = c(0.001, 0.01, 0.05, 0.1),
 <div class="text">
 今回は以下のように定義する。
 
-1: 0–0.01 (including 0), 2: 0.01–0.1, 3: 0.1–0.25, 4: 0.25–0.5, 5: 0.5–0.75, 6: 0.75–1
+1: 0–0.01 (0を含む), 2: 0.01–0.1, 3: 0.1–0.25, 4: 0.25–0.5, 5: 0.5–0.75, 6: 0.75–1
 
-$\delta$を変化させると...
+$\delta$を変化させたとき、実際の被度に対して、各被度階級が選ばれる確率を図示する。
 </div>
 
 ## $\delta$=0.001
@@ -253,7 +259,7 @@ y <- cover_class(p, delta, N)
 <div class="text">
 - 被度 = 0.6
 - $\delta$ = 0.05 とする。
-- 10回測定する。
+- 10回測定する($N = 10$)。
 
 生成されたデータ
 </div>
@@ -264,12 +270,13 @@ print(y)
 
 ## Stan コード {#stan_code_1}
 
+被度階級の確率分布を関数として定義
+
 ```
 functions {
   real coverclass_lpmf(int Y, vector CP, real a, real b) {
     int n_cls;
     real gamma;
-
     n_cls = num_elements(CP) + 1;
     if (Y <= 1) {  // 0 or 1
       gamma =  inc_beta(a, b, CP[1]);
@@ -286,9 +293,10 @@ functions {
 
 ---
 
+モデルの定義
+
 ```
 model {
-  // Observation
   {
     real a = p / delta - p;
     real b = (1 - p) * (1 - delta) / delta;
@@ -333,6 +341,8 @@ yrep <-  extract(fit_sim1, pars = "yrep")[["yrep"]]
 pp_check(y, yrep, ppc_rootogram)
 ```
 
+とくに矛盾はない
+
 # 共変量のあるモデル {#model_2}
 
 ## 模擬データ {#simdata_2}
@@ -340,11 +350,13 @@ pp_check(y, yrep, ppc_rootogram)
 <div class="text">
 - 共変量: X (0〜1の連続値)
 - 次式で被度が生成される。
-
 $$
 \mathrm{logit}(p) = -5 + 5 X + \epsilon \\
 \epsilon \sim \mathrm{Normal}(0, \sigma)
 $$
+
+- $N = 50$ か所で測定
+- 1か所につき、2回くりかえし測定($R = 2$)
 </div>
 
 ## グラフ {#plot_2}
@@ -366,22 +378,26 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
                   rep = factor(rep(1:R, each = N)))) +
   geom_jitter(aes(x = x, y = y, color = rep), size = 4, alpha = 0.8,
               width = 0, height = 0.05) +
+  labs(x = "Cover") +
   scale_y_discrete(name = "Class", limits = 1:6, breaks = as.character(1:6)) +
   theme_gray(base_family = "Helvetica", base_size = 24)
 ```
 
 ## Stan コード {#stan_code_2_1}
 
+被度`p`をロジットリンクで線形予測子と結びつける
+
 ```
 transformed parameters {
-  vector<lower = 0, upper = 1>[N] p;          // proportion of cover
+  vector<lower = 0, upper = 1>[N] p;  // proportion of cover
 
-  // System
   p = inv_logit(beta[1] + beta[2] * X + sigma * err);
 }
 ```
 
 ---
+
+モデルの定義
 
 ```
 model {
@@ -438,7 +454,8 @@ pp_check(y[, 1], yrep, ppc_rootogram) +
 #pp_check(y[, 2], yrep, ppc_rootogram)
 ```
 
-1回目の測定について
+1回目の測定について表示
+<!--ほかについても とくに矛盾はなかった-->
 
 # ゼロ過剰モデル {#zero-inflation}
 
@@ -446,10 +463,12 @@ pp_check(y[, 1], yrep, ppc_rootogram) +
 
 <div class="text">
 - このモデルでの被度
-    - 0: 0, 1: 0–0.01 (excluding 0), 2: 0.01–0.1, 3: 0.1–0.25, 4: 0.25–0.5, 5: 0.5–0.75, 6: 0.75–1
+    - 0: 0, 1: 0–0.01 (0を含まない), 2: 0.01–0.1, 3: 0.1–0.25, 4: 0.25–0.5, 5: 0.5–0.75, 6: 0.75–1
 - 分布している確率: $\omega$
 - 被度1のときの発見確率: $\psi$
-- 被度2以上のときは必ず発見できるとする。
+- 被度2以上のときは必ず発見できるとする($\psi$=1)。
+- $N = 50$ か所で測定
+- 1か所につき、2回くりかえし測定($R = 2$)
 </div>
 
 ```{r zi_datagen, include=FALSE}
@@ -482,11 +501,14 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
                   rep = factor(rep(1:R, each = N)))) +
   geom_jitter(aes(x = x, y = y, color = rep), size = 4, alpha = 0.8,
               width = 0, height = 0.1) +
+  labs(x = "Cover") +
   scale_y_discrete(name = "Class", limits = 0:6, breaks = as.character(0:6)) +
   theme_gray(base_family = "Helvetica", base_size = 24)
 ```
 
 ## Stan コード {#stan_code_3}
+
+モデルの定義
 
 ```
 model {
@@ -505,6 +527,8 @@ model {
       target += log_sum_exp(lp);
     } else {
 ```
+
+つづく
 
 ---
 
@@ -564,11 +588,19 @@ pp_check(y[, 1], yrep, ppc_rootogram) +
   theme_gray(base_family = "Helvetica", base_size = 24)
 #pp_check(y[, 2], yrep, ppc_rootogram)
 ```
- 
+
+<!--とくに矛盾はない-->
 
 # 空間データ
 
 ## 模擬データ {#simdata_4}
+
+10×10=100個の方形区で、被度を生成する
+
+↓
+
+被度階級に変換
+
 
 ```{r car_datagen, include=FALSE}
 library(geoR)
@@ -606,7 +638,7 @@ ggplot(df, aes(x = X, y = Y, fill = factor(class))) +
 
 ##  空間自己相関 {#autocorrelation}
 
-となりとは近い値をとる
+隣とは近い値をとる
 
 ![](Images/autocorrelation.png)
 
@@ -620,6 +652,8 @@ https://mc-stan.org/users/documentation/case-studies/mbjoseph-CARStan.html
 
 ## Stan コード {#stan_code_4}
 
+`phi`の逆ロジットが被度`p`
+
 ```
 transformed parameters {
   vector[N] p = inv_logit(phi);
@@ -627,6 +661,8 @@ transformed parameters {
 ```
 
 ---
+
+`sparse_iar`で、空間自己相関の事前分布
 
 ```
 model {
@@ -726,5 +762,5 @@ ggplot(df, aes(x = Prop, y = Estimate)) +
 - 階層モデリング
   - データが観測される過程
   - データの背後にあるシステム
-- うまく扱える
+- 被度階級データも、適切にモデリングすることで うまく扱える
 
