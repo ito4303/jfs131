@@ -378,7 +378,7 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
                   rep = factor(rep(1:R, each = N)))) +
   geom_jitter(aes(x = x, y = y, color = rep), size = 4, alpha = 0.8,
               width = 0, height = 0.05) +
-  labs(x = "Cover") +
+  labs(x = "Covariate X") +
   scale_y_discrete(name = "Class", limits = 1:6, breaks = as.character(1:6)) +
   theme_gray(base_family = "Helvetica", base_size = 24)
 ```
@@ -501,7 +501,7 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
                   rep = factor(rep(1:R, each = N)))) +
   geom_jitter(aes(x = x, y = y, color = rep), size = 4, alpha = 0.8,
               width = 0, height = 0.1) +
-  labs(x = "Cover") +
+  labs(x = "Covariate X") +
   scale_y_discrete(name = "Class", limits = 0:6, breaks = as.character(0:6)) +
   theme_gray(base_family = "Helvetica", base_size = 24)
 ```
