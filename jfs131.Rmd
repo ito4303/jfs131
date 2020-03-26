@@ -6,7 +6,7 @@ institute: "森林総合研究所北海道支所"
 output:
   revealjs::revealjs_presentation:
     self_contatined: false
-    theme: white
+    theme: simple
     transition: slide
     css: style.css
 ---
@@ -259,7 +259,7 @@ y <- cover_class(p, delta, N)
 <div class="text">
 - 被度 = 0.6
 - $\delta$ = 0.05 とする。
-- 10回測定する。
+- 10回測定する($N = 10$)。
 
 生成されたデータ
 </div>
@@ -297,7 +297,6 @@ functions {
 
 ```
 model {
-  // Observation
   {
     real a = p / delta - p;
     real b = (1 - p) * (1 - delta) / delta;
@@ -351,11 +350,13 @@ pp_check(y, yrep, ppc_rootogram)
 <div class="text">
 - 共変量: X (0〜1の連続値)
 - 次式で被度が生成される。
-
 $$
 \mathrm{logit}(p) = -5 + 5 X + \epsilon \\
 \epsilon \sim \mathrm{Normal}(0, \sigma)
 $$
+
+- $N = 50$ か所で測定
+- 1か所につき、2回くりかえし測定($R = 2$)
 </div>
 
 ## グラフ {#plot_2}
@@ -377,6 +378,7 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
                   rep = factor(rep(1:R, each = N)))) +
   geom_jitter(aes(x = x, y = y, color = rep), size = 4, alpha = 0.8,
               width = 0, height = 0.05) +
+  labs(x = "Cover") +
   scale_y_discrete(name = "Class", limits = 1:6, breaks = as.character(1:6)) +
   theme_gray(base_family = "Helvetica", base_size = 24)
 ```
@@ -387,9 +389,8 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
 
 ```
 transformed parameters {
-  vector<lower = 0, upper = 1>[N] p;          // proportion of cover
+  vector<lower = 0, upper = 1>[N] p;  // proportion of cover
 
-  // System
   p = inv_logit(beta[1] + beta[2] * X + sigma * err);
 }
 ```
@@ -466,6 +467,8 @@ pp_check(y[, 1], yrep, ppc_rootogram) +
 - 分布している確率: $\omega$
 - 被度1のときの発見確率: $\psi$
 - 被度2以上のときは必ず発見できるとする($\psi$=1)。
+- $N = 50$ か所で測定
+- 1か所につき、2回くりかえし測定($R = 2$)
 </div>
 
 ```{r zi_datagen, include=FALSE}
@@ -498,6 +501,7 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
                   rep = factor(rep(1:R, each = N)))) +
   geom_jitter(aes(x = x, y = y, color = rep), size = 4, alpha = 0.8,
               width = 0, height = 0.1) +
+  labs(x = "Cover") +
   scale_y_discrete(name = "Class", limits = 0:6, breaks = as.character(0:6)) +
   theme_gray(base_family = "Helvetica", base_size = 24)
 ```
