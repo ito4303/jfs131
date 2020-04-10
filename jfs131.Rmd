@@ -181,6 +181,7 @@ sim_cover_prob <- function(delta = c(0.001, 0.01, 0.05, 0.1),
   plt <- ggplot(df) +
     geom_vline(xintercept = cut_points, color = "red", size = 0.33, linetype = 2) +
     geom_line(aes(x = Cover, y = Probability, color = Class), size = 1.2) +
+    labs(x = "Mean cover", y = "Probability") +
     scale_color_manual(values = colorblind_pal()(8)[c(1, 2, 3, 4, 6, 7)]) +
     facet_wrap(~delta) +
     theme_bw(base_family = "Helvetica", base_size = 24)
@@ -195,7 +196,7 @@ sim_cover_prob <- function(delta = c(0.001, 0.01, 0.05, 0.1),
 
 1: 0–0.01 (0を含む), 2: 0.01–0.1, 3: 0.1–0.25, 4: 0.25–0.5, 5: 0.5–0.75, 6: 0.75–1
 
-$\delta$を変化させたとき、実際の被度に対して、各被度階級が選ばれる確率を図示する。
+$\delta$を変化させたとき、平均被度に対して、各被度階級が選ばれる確率を図示する。
 </div>
 
 ## $\delta$=0.001
@@ -385,7 +386,7 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
 
 ## Stan コード {#stan_code_2_1}
 
-被度`p`をロジットリンクで線形予測子と結びつける
+平均被度`p`をロジットリンクで線形予測子と結びつける
 
 ```
 transformed parameters {
@@ -652,7 +653,7 @@ https://mc-stan.org/users/documentation/case-studies/mbjoseph-CARStan.html
 
 ## Stan コード {#stan_code_4}
 
-`phi`の逆ロジットが被度`p`
+`phi`の逆ロジットが平均被度`p`
 
 ```
 transformed parameters {
