@@ -4,6 +4,8 @@
 
 企画シンポジウム「階層モデルが変える森林科学分野のデータ解析」における発表
 
+出力HTML: [植生被度階級データのモデリング](https://ito4303.github.io/jfs131.html)
+
 ## ファイル
 - jfs131:Rmd: 発表資料（RMarkdown + reveal.js)
 - cover.stan: 被度推定のモデル
