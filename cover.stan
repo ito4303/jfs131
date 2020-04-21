@@ -58,16 +58,16 @@ data {
 }
 
 parameters {
-  real<lower = 0, upper = 1> p;               // proportion of cover
-  real<lower = 0, upper = 1> delta;           // intra-quad corr.
+  real<lower = 0, upper = 1> mu;              // Mean proportion of cover
+  real<lower = 0, upper = 1> delta;           // Intra-quad corr.
                                               //   or uncertainty
 }
 
 model {
   // Observation
   {
-    real a = p / delta - p;
-    real b = (1 - p) * (1 - delta) / delta;
+    real a = mu / delta - mu;
+    real b = (1 - mu) * (1 - delta) / delta;
 
     for (n in 1:N)
       Y[n] ~ coverclass(CP, a, b);
@@ -78,8 +78,8 @@ generated quantities {
   int yrep[N];
   
   {
-    real a = p / delta - p;
-    real b = (1 - p) * (1 - delta) / delta;
+    real a = mu / delta - mu;
+    real b = (1 - mu) * (1 - delta) / delta;
     
     for (n in 1:N)
       yrep[n] = coverclass_rng(CP, N_cls, a, b);
