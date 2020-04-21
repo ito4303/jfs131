@@ -43,25 +43,25 @@ data {
 }
 
 parameters {
-  real<lower = 0, upper = 1> delta; // intra-quad corr. or uncertainty
-  real<lower = 0, upper = 1> omega; // prob. non-zero
-  real<lower = 0, upper = 1> psi;   // detection prob.
-  vector[2] beta;                   // intercept and coeff.
-  vector[N] err;                    // error in system (reparam)
-  real<lower = 0> sigma;            // sd of error
+  real<lower = 0, upper = 1> delta; // Intra-quad corr. or uncertainty
+  real<lower = 0, upper = 1> omega; // Prob. non-zero
+  real<lower = 0, upper = 1> psi;   // Detection prob.
+  vector[2] beta;                   // Intercept and coeff.
+  vector[N] err;                    // Error in system (reparam)
+  real<lower = 0> sigma;            // SD of error
 }
 
 transformed parameters {
-  vector<lower = 0, upper = 1>[N] p;               // proportion of cover
+  vector<lower = 0, upper = 1>[N] mu;  // Mean proportion of cover
 
-  p = inv_logit(beta[1] + beta[2] * X + sigma * err);
+  mu = inv_logit(beta[1] + beta[2] * X + sigma * err);
 }
 
 model {
   // Observation model
   for (n in 1:N) {
-    real a = p[n] / delta - p[n];
-    real b = (1 - p[n]) * (1 - delta) / delta;
+    real a = mu[n] / delta - mu[n];
+    real b = (1 - mu[n]) * (1 - delta) / delta;
 
     if (sum(Y[n]) == 0) { // Y[n]==0 for all n
       real lp[2];
@@ -98,14 +98,14 @@ generated quantities {
 
   for (n in 1:N) {
     if (bernoulli_rng(omega)) {
-      real p_new;
+      real mu_new;
       real a;
       real b;
 
-      p_new = inv_logit(beta[1] + beta[2] * X[n]
+      mu_new = inv_logit(beta[1] + beta[2] * X[n]
                         + normal_rng(0, sigma));
-      a = p_new / delta - p_new;
-      b = (1 - p_new) * (1 - delta) / delta;
+      a = mu_new / delta - mu_new;
+      b = (1 - mu_new) * (1 - delta) / delta;
 
       yrep[n] = coverclass_rng(CP, N_cls, a, b);
       if (yrep[n] == 1 && bernoulli_rng(1 - psi))

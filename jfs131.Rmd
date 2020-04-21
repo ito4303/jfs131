@@ -299,15 +299,14 @@ functions {
 ```
 model {
   {
-    real a = p / delta - p;
-    real b = (1 - p) * (1 - delta) / delta;
+    real a = mu / delta - mu;
+    real b = (1 - mu) * (1 - delta) / delta;
 
     for (n in 1:N)
       Y[n] ~ coverclass(CP, a, b);
   }
 }
 ```
-$\mu$のところを`p`にした。
 
 ## モデルへのあてはめ {#fit_1}
 
@@ -332,7 +331,7 @@ if (file.exists(results_file)) {
 ## 事後分布の要約 {#summary_1}
 
 ```{r sim1_summary, echo=FALSE}
-print(fit_sim1, pars = c("p", "delta"))
+print(fit_sim1, pars = c("mu", "delta"))
 ```
 
 ## 事後予測チェック {#ppc_1}
@@ -368,13 +367,13 @@ N <- 50
 R <- 2
 k <- c(0.01, 0.1, 0.25, 0.5, 0.75)
 x <- runif(N, 0, 1)
-logit_p <- -5 + 5 * x + rnorm(N, 0, 0.5)
-p <- 1 / (1 + exp(-logit_p))
+logit_mu <- -5 + 5 * x + rnorm(N, 0, 0.5)
+mu <- 1 / (1 + exp(-logit_mu))
 delta <- 0.1
 y <- matrix(0, nrow = N, ncol = R)
 for (n in 1:N)
   for (r in 1:R)
-    y[n, r] <- cover_class(p[n], delta)
+    y[n, r] <- cover_class(mu[n], delta)
 ggplot(data.frame(x = rep(x, R), y = c(y),
                   rep = factor(rep(1:R, each = N)))) +
   geom_jitter(aes(x = x, y = y, color = rep), size = 4, alpha = 0.8,
@@ -386,13 +385,13 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
 
 ## Stan コード {#stan_code_2_1}
 
-平均被度`p`をロジットリンクで線形予測子と結びつける
+平均被度`mu`をロジットリンクで線形予測子と結びつける
 
 ```
 transformed parameters {
   vector<lower = 0, upper = 1>[N] p;  // proportion of cover
 
-  p = inv_logit(beta[1] + beta[2] * X + sigma * err);
+  mu = inv_logit(beta[1] + beta[2] * X + sigma * err);
 }
 ```
 
@@ -404,8 +403,8 @@ transformed parameters {
 model {
   // Observation
   for (n in 1:N) {
-    real a = p[n] / delta - p[n];
-    real b = (1 - p[n]) * (1 - delta) / delta;
+    real a = mu[n] / delta - mu[n];
+    real b = (1 - mu[n]) * (1 - delta) / delta;
 
     for (r in 1:R)
       Y[n, r] ~ coverclass(CP, a, b);
@@ -515,8 +514,8 @@ ggplot(data.frame(x = rep(x, R), y = c(y),
 model {
   // Observation model
   for (n in 1:N) {
-    real a = p[n] / delta - p[n];
-    real b = (1 - p[n]) * (1 - delta) / delta;
+    real a = mu[n] / delta - mu[n];
+    real b = (1 - mu[n]) * (1 - delta) / delta;
 
     if (sum(Y[n]) == 0) { // Y[n]==0 for all n
       real lp[2];
@@ -653,11 +652,11 @@ https://mc-stan.org/users/documentation/case-studies/mbjoseph-CARStan.html
 
 ## Stan コード {#stan_code_4}
 
-`phi`の逆ロジットが平均被度`p`
+`phi`の逆ロジットが平均被度`mu`
 
 ```
 transformed parameters {
-  vector[N] p = inv_logit(phi);
+  vector[N] mu = inv_logit(phi);
 }
 ```
 
@@ -672,8 +671,8 @@ model {
 
   // Observation model
   for (n in 1:N) {
-    real a = p[n] / delta - p[n];
-    real b = (1 - p[n]) * (1 - delta) / delta;
+    real a = mu[n] / delta - mu[n];
+    real b = (1 - mu[n]) * (1 - delta) / delta;
 
     Y[n] ~ coverclass(CP, a, b);
   }
@@ -736,7 +735,7 @@ print(fit_car, pars = c("delta", "tau"))
 ## 推定された被度（割合） {#est_4}
 
 ```{r car_result_map, echo=FALSE}
-df$Estimate <- get_posterior_mean(fit_car, pars = "p")[, "mean-all chains"]
+df$Estimate <- get_posterior_mean(fit_car, pars = "mu")[, "mean-all chains"]
 ggplot(df, aes(x = X, y = Y, fill = Estimate)) +
   geom_bin2d(stat = "identity") +
   coord_fixed() +

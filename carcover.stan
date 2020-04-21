@@ -125,7 +125,7 @@ parameters {
 }
 
 transformed parameters {
-  vector[N] p = inv_logit(phi);
+  vector[N] mu = inv_logit(phi);             // Mean proportion of cover
 }
 
 model {
@@ -134,8 +134,8 @@ model {
 
   // Observation model
   for (n in 1:N) {
-    real a = p[n] / delta - p[n];
-    real b = (1 - p[n]) * (1 - delta) / delta;
+    real a = mu[n] / delta - mu[n];
+    real b = (1 - mu[n]) * (1 - delta) / delta;
 
     Y[n] ~ coverclass(CP, a, b);
   }
@@ -148,8 +148,8 @@ generated quantities {
   int yrep[N];
   
   for (n in 1:N) {
-    real a = p[n] / delta - p[n];
-    real b = (1 - p[n]) * (1 - delta) / delta;
+    real a = mu[n] / delta - mu[n];
+    real b = (1 - mu[n]) * (1 - delta) / delta;
     
     yrep[n] = coverclass_rng(CP, N_cls, a, b);
   }
